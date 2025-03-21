@@ -100,5 +100,16 @@ with open('dataset.csv', mode ='r') as file:
     else:
        disease_to_symptom_map[line[0]] = symptoms
 
-
 print(disease_to_symptom_map)
+
+diagnosis_graph = Graph()
+
+for disease in disease_to_symptom_map:
+    if disease not in diagnosis_graph._vertices:
+        diagnosis_graph.add_vertex(disease)
+
+    for symptom in disease_to_symptom_map[disease]:
+        if symptom not in diagnosis_graph._vertices:
+            diagnosis_graph.add_vertex(symptom)
+        
+        diagnosis_graph.add_edge(disease_to_symptom_map[disease], symptom)

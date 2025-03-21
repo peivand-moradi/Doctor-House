@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-
+import csv
 
 class _Vertex:
     """A vertex in a graph.
@@ -71,3 +71,23 @@ class Graph:
             return {neighbour.item for neighbour in v.neighbours}
         else:
             raise ValueError
+        
+
+with open('Symptom-severity.csv', mode ='r') as file:
+  symptomfile = csv.reader(file)
+  next(symptomfile)
+  severity_map = {line[0] : line[1] for line in symptomfile}
+
+with open('dataset.csv', mode ='r') as file:
+  diseasefile = csv.reader(file)
+  next(diseasefile)
+  disease_to_symptom_map = {}
+  for line in diseasefile:
+    symptoms = {element for element in line[1:] if element != ""}
+    if line[0] in disease_to_symptom_map:
+        disease_to_symptom_map[line[0]] = disease_to_symptom_map[line[0]].union(symptoms)
+    else:
+       disease_to_symptom_map[line[0]] = symptoms
+
+
+print(disease_to_symptom_map)

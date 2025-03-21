@@ -8,11 +8,13 @@ class _Vertex:
     Instance Attributes:
         - item: The data stored in this vertex.
         - neighbours: The vertices that are adjacent to this vertex.
+        - kind: The type of this vertex: 'symptom' or 'disease'.
     """
     item: Any
-    neighbours: set[_Vertex]
+    neighbours: set[(_Vertex, int)]
+    kind: str
 
-    def __init__(self, item: Any, neighbours: set[_Vertex]) -> None:
+    def __init__(self, item: Any, neighbours: set[(_Vertex, int)]) -> None:
         """Initialize a new vertex with the given item and neighbours."""
         self.item = item
         self.neighbours = neighbours
@@ -30,7 +32,7 @@ class Graph:
     #                  Maps item to _Vertex instance.
     _vertices: dict[Any, _Vertex]
 
-    def add_vertex(self, item: Any) -> None:
+    def add_vertex(self, item: Any, item_kind: str) -> None:
         """Add a vertex with the given item to this graph.
 
         The new vertex is not adjacent to any other vertices.
@@ -38,9 +40,9 @@ class Graph:
         Preconditions:
             - item not in self._vertices
         """
-        self._vertices[item] = _Vertex(item, set())
+        self._vertices[item] = _Vertex(item, set(), item_kind)
 
-    def add_edge(self, item1: Any, item2: Any) -> None:
+    def add_edge(self, item1: Any, item2: Any, edge_value: int) -> None:
         """Add an edge between the two vertices with the given items in this graph.
 
         Raise a ValueError if item1 or item2 do not appear as vertices in this graph.
@@ -53,8 +55,8 @@ class Graph:
             v2 = self._vertices[item2]
 
             # Add the new edge
-            v1.neighbours.add(v2)
-            v2.neighbours.add(v1)
+            v1.neighbours.add((v2, edge_value))
+            v2.neighbours.add((v1, edge_value))
         else:
             # We didn't find an existing vertex for both items.
             raise ValueError
@@ -65,7 +67,7 @@ class Graph:
         """
         if item1 in self._vertices and item2 in self._vertices:
             v1 = self._vertices[item1]
-            return any(v2.item == item2 for v2 in v1.neighbours)
+            return any(v2[0].item == item2 for v2 in v1.neighbours)
         else:
             # We didn't find an existing vertex for both items.
             return False
@@ -82,7 +84,7 @@ class Graph:
             return {neighbour.item for neighbour in v.neighbours}
         else:
             raise ValueError
-        
+
 
 with open('Symptom-severity.csv', mode ='r') as file:
   symptomfile = csv.reader(file)
@@ -106,10 +108,10 @@ diagnosis_graph = Graph()
 
 for disease in disease_to_symptom_map:
     if disease not in diagnosis_graph._vertices:
-        diagnosis_graph.add_vertex(disease)
+        diagnosis_graph.add_vertex(disease, 'disease')
 
     for symptom in disease_to_symptom_map[disease]:
         if symptom not in diagnosis_graph._vertices:
-            diagnosis_graph.add_vertex(symptom)
-        
-        diagnosis_graph.add_edge(disease_to_symptom_map[disease], symptom)
+            diagnosis_graph.add_vertex(symptom, 'symptom')
+
+        diagnosis_graph.add_edge(disease_to_symptom_map[disease], symptom, severity_map[symptom])

@@ -85,7 +85,7 @@ class Graph:
         else:
             raise ValueError
 
-        def shortest_path(self, start: Any, end: Any) -> list[Any]:
+     def shortest_path(self, start: Any, end: Any) -> list[Any]:
         """Find the shortest path between two vertices using BFS.
 
         Returns a list of items representing the shortest path from start to end.

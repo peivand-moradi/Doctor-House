@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Any
 import csv
 from collections import deque
+from itertools import combinations
+
 
 class _Vertex:
     """A vertex in a graph.
@@ -15,10 +17,11 @@ class _Vertex:
     neighbours: set[(_Vertex, int)]
     kind: str
 
-    def __init__(self, item: Any, neighbours: set[(_Vertex, int)]) -> None:
+    def __init__(self, item: Any, neighbours: set[(_Vertex, int)], kind: str) -> None:
         """Initialize a new vertex with the given item and neighbours."""
         self.item = item
         self.neighbours = neighbours
+        self.kind = kind
 
 
 class Graph:
@@ -32,6 +35,10 @@ class Graph:
     #     - _vertices: A collection of the vertices contained in this graph.
     #                  Maps item to _Vertex instance.
     _vertices: dict[Any, _Vertex]
+
+    def __init__(self) -> None:
+        """Initialize an empty graph (no vertices or edges)."""
+        self._vertices = {}
 
     def add_vertex(self, item: Any, item_kind: str) -> None:
         """Add a vertex with the given item to this graph.
@@ -56,8 +63,8 @@ class Graph:
             v2 = self._vertices[item2]
 
             # Add the new edge
-            v1.neighbours.add((v2, edge_value))
-            v2.neighbours.add((v1, edge_value))
+            v1.neighbours.add((v2, 1 / edge_value))
+            v2.neighbours.add((v1, 1 / edge_value))
         else:
             # We didn't find an existing vertex for both items.
             raise ValueError
@@ -82,11 +89,11 @@ class Graph:
         """
         if item in self._vertices:
             v = self._vertices[item]
-            return {neighbour.item for neighbour in v.neighbours}
+            return {neighbour[0].item for neighbour in v.neighbours}
         else:
             raise ValueError
 
-     def shortest_path(self, start: Any, end: Any) -> list[Any]:
+    def shortest_path(self, start: Any, end: Any) -> list[Any]:
         """Find the shortest path between two vertices using BFS.
 
         Returns a list of items representing the shortest path from start to end.
@@ -113,23 +120,43 @@ class Graph:
                     queue.append(new_path)
 
         return []  # No path found
+    
+    def get_vertex_kind(self, item):
+        return self._vertices[item].kind
+    
+    def get_weight_of_edge(self, item_1: Any, item_2: Any):
+        """
+        
+        Preconditions:
+            - item_1 and item_2 are neighbours
+        """
+        for neighbour in self._vertices[item_1].neighbours:
+            if neighbour[0].item == item_2:
+                return neighbour[1]
+                
+    
+    def calculate_path_score(self, path: list):
+        score = 0
+        for i in range(len(path) - 1):
+            score += self.get_weight_of_edge(path[i], path[i + 1])
+        return score
 
 
 with open('Symptom-severity.csv', mode ='r') as file:
   symptomfile = csv.reader(file)
   next(symptomfile)
-  severity_map = {line[0] : line[1] for line in symptomfile}
+  severity_map = {line[0].strip() : line[1].strip() for line in symptomfile}
 
 with open('dataset.csv', mode ='r') as file:
   diseasefile = csv.reader(file)
   next(diseasefile)
   disease_to_symptom_map = {}
   for line in diseasefile:
-    symptoms = {element for element in line[1:] if element != ""}
-    if line[0] in disease_to_symptom_map:
-        disease_to_symptom_map[line[0]] = disease_to_symptom_map[line[0]].union(symptoms)
+    symptoms = {element.strip() for element in line[1:] if element != ""}
+    if line[0].strip() in disease_to_symptom_map:
+        disease_to_symptom_map[line[0].strip()] = disease_to_symptom_map[line[0].strip()].union(symptoms)
     else:
-       disease_to_symptom_map[line[0]] = symptoms
+       disease_to_symptom_map[line[0].strip()] = symptoms
 
 print(disease_to_symptom_map)
 
@@ -143,4 +170,35 @@ for disease in disease_to_symptom_map:
         if symptom not in diagnosis_graph._vertices:
             diagnosis_graph.add_vertex(symptom, 'symptom')
 
-        diagnosis_graph.add_edge(disease_to_symptom_map[disease], symptom, severity_map[symptom])
+        diagnosis_graph.add_edge(disease, symptom, int(severity_map[symptom]))
+
+
+print(diagnosis_graph.shortest_path("skin_rash","bruising"))
+
+
+def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list):
+    scores = {}
+    for symptom_1, symptom_2 in combinations(symptoms, 2):
+        path = diagnosis_graph.shortest_path(symptom_1, symptom_2)
+        for vertex in path:
+            if diagnosis_graph.get_vertex_kind(vertex) == "disease":
+                if vertex not in scores:
+                    scores[vertex] = diagnosis_graph.calculate_path_score(path)
+                else: 
+                    scores[vertex] += diagnosis_graph.calculate_path_score(path)
+
+
+    scores = {disease: 1 / scores[disease] for disease in scores}
+    sum_scores = sum([scores[disease] for disease in scores])
+    scores = {disease: (scores[disease] / sum_scores) * 100 for disease in scores}
+
+    return scores
+    
+
+
+
+print(calculate_potential_disease(diagnosis_graph, ["congestion", "knee_pain", "depression", "polyuria"]))
+
+
+print(calculate_potential_disease(diagnosis_graph, ["continuous_feel_of_urine", "abdominal_pain"]))
+

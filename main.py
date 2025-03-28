@@ -120,13 +120,13 @@ class Graph:
                     queue.append(new_path)
 
         return []  # No path found
-    
+
     def get_vertex_kind(self, item: Any) -> str:
         """
         Return the type of vertex (that is disease or symptom) with the given item
         """
         return self._vertices[item].kind
-    
+
     def get_weight_of_edge(self, item_1: Any, item_2: Any) -> float:
         """
         Returns the weight of the edge between two vertices with given item_1 and item_2.
@@ -178,6 +178,8 @@ with open('dataset.csv', mode ='r') as file:
 
 print(disease_to_symptom_map)
 
+symptoms_list = [item for item in severity_map]
+
 diagnosis_graph = Graph()
 
 for disease in disease_to_symptom_map:
@@ -212,7 +214,7 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
             if diagnosis_graph.get_vertex_kind(vertex) == "disease":
                 if vertex not in scores:
                     scores[vertex] = diagnosis_graph.calculate_path_score(path)
-                else: 
+                else:
                     scores[vertex] += diagnosis_graph.calculate_path_score(path)
 
 
@@ -221,7 +223,7 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
     scores = {disease: (scores[disease] / sum_scores) * 100 for disease in scores}
 
     return scores
-    
+
 
 
 

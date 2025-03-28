@@ -145,6 +145,19 @@ class Graph:
         for i in range(len(path) - 1):
             score += self.get_weight_of_edge(path[i], path[i + 1])
         return score
+    
+    def get_list_of_vertices(self) -> list:
+        return [vertex for vertex in self._vertices]
+    
+    def get_closest_neighbour(self, item: Any) -> Any:
+        min_weight_so_far = 5
+        closest_neighbour_so_far = "placeholder"
+        for neighbour in self._vertices[item].neighbours:
+            if neighbour[1] < min_weight_so_far:
+                min_weight_so_far = neighbour[1]
+                closest_neighbour_so_far = neighbour[0].item
+        return closest_neighbour_so_far
+
 
 
 with open('Symptom-severity.csv', mode='r') as file:
@@ -168,11 +181,11 @@ print(disease_to_symptom_map)
 diagnosis_graph = Graph()
 
 for disease in disease_to_symptom_map:
-    if disease not in diagnosis_graph._vertices:
+    if disease not in diagnosis_graph.get_list_of_vertices():
         diagnosis_graph.add_vertex(disease, 'disease')
 
     for symptom in disease_to_symptom_map[disease]:
-        if symptom not in diagnosis_graph._vertices:
+        if symptom not in diagnosis_graph.get_list_of_vertices():
             diagnosis_graph.add_vertex(symptom, 'symptom')
 
         diagnosis_graph.add_edge(disease, symptom, int(severity_map[symptom]))
@@ -188,6 +201,10 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
     This function checks all pairs of symptoms, finds the shortest path between them, and adds up scores for
     each disease along the path. It then calculates a percentage chance for each disease based on those scores.
     """
+
+    if len(symptoms) == 1:
+        return {diagnosis_graph.get_closest_neighbour(symptoms[0]): 100}
+    
     scores = {}
     for symptom_1, symptom_2 in combinations(symptoms, 2):
         path = diagnosis_graph.shortest_path(symptom_1, symptom_2)
@@ -212,4 +229,6 @@ print(calculate_potential_disease(diagnosis_graph, ["congestion", "knee_pain", "
 
 
 print(calculate_potential_disease(diagnosis_graph, ["continuous_feel_of_urine", "abdominal_pain"]))
+
+print(calculate_potential_disease(diagnosis_graph, ["continuous_feel_of_urine"]))
 

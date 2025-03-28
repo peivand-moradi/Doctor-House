@@ -1,8 +1,29 @@
 from __future__ import annotations
 from typing import Any
+from typing import Optional
 import csv
 from collections import deque
 from itertools import combinations
+
+class Disease:
+    """A disease object.
+
+    Instance Attributes:
+        - symptoms: Symptoms related to this disease.
+        - advice: Precautions that can be taken against this disease.
+        - description: A brief description of the disease.
+    """
+    name: str
+    symptoms: Optional[list]
+    advice: list
+    description: Optional[str]
+
+    def __init__(self, name: str, advice: list = None, symptoms: list = None, description: str = None) -> None:
+        """Initialize a new vertex with the given item and neighbours."""
+        self.name = name
+        self.symptoms = symptoms
+        self.advice = advice if advice is not None else [] 
+        self.description = description
 
 
 class _Vertex:
@@ -168,32 +189,42 @@ with open('Symptom-severity.csv', mode='r') as file:
 with open('dataset.csv', mode ='r') as file:
   diseasefile = csv.reader(file)
   next(diseasefile)
-  disease_to_symptom_map = {}
+  name_to_disease_map = {}
   for line in diseasefile:
     symptoms = {element.strip() for element in line[1:] if element != ""}
-    if line[0].strip() in disease_to_symptom_map:
-        disease_to_symptom_map[line[0].strip()] = disease_to_symptom_map[line[0].strip()].union(symptoms)
+    if line[0].strip() in name_to_disease_map:
+        name_to_disease_map[line[0].strip()].symptoms = name_to_disease_map[line[0].strip()].symptoms.union(symptoms)
     else:
-       disease_to_symptom_map[line[0].strip()] = symptoms
+       name_to_disease_map[line[0].strip()] = Disease(name = line[0].strip(), symptoms = symptoms)
 
-print(disease_to_symptom_map)
+with open('symptom_Description.csv', mode='r') as file:
+  description_file = csv.reader(file)
+  next(description_file)
+  for line in description_file:
+      name_to_disease_map[line[0].strip()].description = line[1].strip()
+
+with open('symptom_precaution.csv', mode='r') as file:
+  precaution_file = csv.reader(file)
+  next(precaution_file)
+  for line in precaution_file:
+    for i in range(1, len(line)):
+        name_to_disease_map[line[0].strip()].advice.append(line[i].strip())
+
+
 
 symptoms_list = [item for item in severity_map]
 
 diagnosis_graph = Graph()
 
-for disease in disease_to_symptom_map:
+for disease in name_to_disease_map:
     if disease not in diagnosis_graph.get_list_of_vertices():
         diagnosis_graph.add_vertex(disease, 'disease')
 
-    for symptom in disease_to_symptom_map[disease]:
+    for symptom in name_to_disease_map[disease].symptoms:
         if symptom not in diagnosis_graph.get_list_of_vertices():
             diagnosis_graph.add_vertex(symptom, 'symptom')
 
         diagnosis_graph.add_edge(disease, symptom, int(severity_map[symptom]))
-
-
-print(diagnosis_graph.shortest_path("skin_rash","bruising"))
 
 
 def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[str, float]:
@@ -206,7 +237,7 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
 
     if len(symptoms) == 1:
         return {diagnosis_graph.get_closest_neighbour(symptoms[0]): 100}
-    
+
     scores = {}
     for symptom_1, symptom_2 in combinations(symptoms, 2):
         path = diagnosis_graph.shortest_path(symptom_1, symptom_2)
@@ -226,11 +257,9 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
 
 
 
-
+# Some Tests TODO: Delete Later
 print(calculate_potential_disease(diagnosis_graph, ["congestion", "knee_pain", "depression", "polyuria"]))
-
-
 print(calculate_potential_disease(diagnosis_graph, ["continuous_feel_of_urine", "abdominal_pain"]))
-
 print(calculate_potential_disease(diagnosis_graph, ["continuous_feel_of_urine"]))
-
+print(name_to_disease_map["Peptic ulcer diseae"].advice)
+print(name_to_disease_map["Peptic ulcer diseae"].description)

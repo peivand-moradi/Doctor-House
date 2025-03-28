@@ -168,9 +168,16 @@ class Graph:
         return score
     
     def get_list_of_vertices(self) -> list:
+        """ Returns a list of all vertices (could be disease or symptom) present in this graph
+        """
         return [vertex for vertex in self._vertices]
     
     def get_closest_neighbour(self, item: Any) -> Any:
+        """
+        Find and return the closest neighbor of a given vertex with item based on the minimum edge weight.
+        This function iterates through all the neighbors of the specified vertex and identifies 
+        the neighbor with the lowest weight (severity score), representing the closest connection.
+        """
         min_weight_so_far = 5
         closest_neighbour_so_far = "placeholder"
         for neighbour in self._vertices[item].neighbours:
@@ -178,7 +185,6 @@ class Graph:
                 min_weight_so_far = neighbour[1]
                 closest_neighbour_so_far = neighbour[0].item
         return closest_neighbour_so_far
-
 
 
 with open('Symptom-severity.csv', mode='r') as file:

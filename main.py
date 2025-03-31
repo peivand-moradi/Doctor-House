@@ -1,253 +1,202 @@
-from __future__ import annotations
-from typing import Any
-from typing import Optional
-import csv
-from collections import deque
-from itertools import combinations
+import tkinter as tk
+from tkinter import ttk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+import backend
 
-class Disease:
-    """A disease object.
-
-    Instance Attributes:
-        - symptoms: Symptoms related to this disease.
-        - advice: Precautions that can be taken against this disease.
-        - description: A brief description of the disease.
-    """
-    name: str
-    symptoms: Optional[list]
-    advice: list
-    description: Optional[str]
-
-    def __init__(self, name: str, advice: list = None, symptoms: list = None, description: str = None) -> None:
-        """Initialize a new vertex with the given item and neighbours."""
-        self.name = name
-        self.symptoms = symptoms
-        self.advice = advice if advice is not None else [] 
-        self.description = description
-
-
-class _Vertex:
-    """A vertex in a graph.
-
-    Instance Attributes:
-        - item: The data stored in this vertex.
-        - neighbours: The vertices that are adjacent to this vertex.
-        - kind: The type of this vertex: 'symptom' or 'disease'.
-    """
-    item: Any
-    neighbours: set[(_Vertex, int)]
-    kind: str
-
-    def __init__(self, item: Any, neighbours: set[(_Vertex, int)], kind: str) -> None:
-        """Initialize a new vertex with the given item and neighbours."""
-        self.item = item
-        self.neighbours = neighbours
-        self.kind = kind
-
-
-class Graph:
-
-    """A graph.
-
-    Representation Invariants:
-    - all(item == self._vertices[item].item for item in self._vertices)
-    """
-    # Private Instance Attributes:
-    #     - _vertices: A collection of the vertices contained in this graph.
-    #                  Maps item to _Vertex instance.
-    _vertices: dict[Any, _Vertex]
-
-    def __init__(self) -> None:
-        """Initialize an empty graph (no vertices or edges)."""
-        self._vertices = {}
-
-    def add_vertex(self, item: Any, item_kind: str) -> None:
-        """Add a vertex with the given item to this graph.
-
-        The new vertex is not adjacent to any other vertices.
-
-        Preconditions:
-            - item not in self._vertices
-        """
-        self._vertices[item] = _Vertex(item, set(), item_kind)
-
-    def add_edge(self, item1: Any, item2: Any, edge_value: int) -> None:
-        """Add an edge between the two vertices with the given items in this graph.
-
-        Raise a ValueError if item1 or item2 do not appear as vertices in this graph.
-
-        Preconditions:
-            - item1 != item2
-        """
-        if item1 in self._vertices and item2 in self._vertices:
-            v1 = self._vertices[item1]
-            v2 = self._vertices[item2]
-
-            # Add the new edge
-            v1.neighbours.add((v2, 1 / edge_value))
-            v2.neighbours.add((v1, 1 / edge_value))
-        else:
-            # We didn't find an existing vertex for both items.
-            raise ValueError
-    def adjacent(self, item1: Any, item2: Any) -> bool:
-        """Return whether item1 and item2 are adjacent vertices in this graph.
-
-        Return False if item1 or item2 do not appear as vertices in this graph.
-        """
-        if item1 in self._vertices and item2 in self._vertices:
-            v1 = self._vertices[item1]
-            return any(v2[0].item == item2 for v2 in v1.neighbours)
-        else:
-            # We didn't find an existing vertex for both items.
-            return False
-
-    def get_neighbours(self, item: Any) -> set:
-        """Return a set of the neighbours of the given item.
-
-        Note that the *items* are returned, not the _Vertex objects themselves.
-
-        Raise a ValueError if item does not appear as a vertex in this graph.
-        """
-        if item in self._vertices:
-            v = self._vertices[item]
-            return {neighbour[0].item for neighbour in v.neighbours}
-        else:
-            raise ValueError
-
-    def shortest_path(self, start: Any, end: Any) -> list[Any]:
-        """Find the shortest path between two vertices using BFS.
-
-        Returns a list of items representing the shortest path from start to end.
-        If no path exists, returns an empty list.
-        """
-        if start not in self._vertices or end not in self._vertices:
-            return []
-
-        queue = deque([[start]])  # Queue stores paths, starting with the start vertex
-        visited = set()
-
-        while queue:
-            path = queue.popleft()
-            node = path[-1]
-
-            if node == end:
-                return path  # Found the shortest path
-
-            if node not in visited:
-                visited.add(node)
-                for neighbor in self.get_neighbours(node):
-                    new_path = list(path)  # Copy the current path
-                    new_path.append(neighbor)
-                    queue.append(new_path)
-
-        return []  # No path found
-
-    def get_vertex_kind(self, item: Any) -> str:
-        """
-        Return the type of vertex (that is disease or symptom) with the given item
-        """
-        return self._vertices[item].kind
-
-    def get_weight_of_edge(self, item_1: Any, item_2: Any) -> float:
-        """
-        Returns the weight of the edge between two vertices with given item_1 and item_2.
-        Preconditions:
-            - item_1 and item_2 are neighbours
-        """
-        for neighbour in self._vertices[item_1].neighbours:
-            if neighbour[0].item == item_2:
-                return neighbour[1]
-
-    def calculate_path_score(self, path: list) -> float:
-        """
-        return the total weight of the given path.
-        """
-        score = 0
-        for i in range(len(path) - 1):
-            score += self.get_weight_of_edge(path[i], path[i + 1])
-        return score
-    
-    def get_list_of_vertices(self) -> list:
-        """ Returns a list of all vertices (could be disease or symptom) present in this graph
-        """
-        return [vertex for vertex in self._vertices]
-
-def load_diagnosis_graph(symptom_file: str, dataset_file: str, description_file: str, precaution_file: str) -> Graph:
-    with open(symptom_file, mode='r') as file:
-        symptomfile = csv.reader(file)
-        next(symptomfile)
-        severity_map = {line[0].strip() : line[1].strip() for line in symptomfile}
-
-    with open(dataset_file, mode ='r') as file:
-        diseasefile = csv.reader(file)
-        next(diseasefile)
-        name_to_disease_map = {}
-        for line in diseasefile:
-            symptoms = {element.strip() for element in line[1:] if element != ""}
-            if line[0].strip() in name_to_disease_map:
-                name_to_disease_map[line[0].strip()].symptoms = name_to_disease_map[line[0].strip()].symptoms.union(symptoms)
-            else:
-                name_to_disease_map[line[0].strip()] = Disease(name = line[0].strip(), symptoms = symptoms)
-
-    with open(description_file, mode='r') as file:
-        description_file = csv.reader(file)
-        next(description_file)
-        for line in description_file:
-            name_to_disease_map[line[0].strip()].description = line[1].strip()
-
-    with open('symptom_precaution.csv', mode='r') as file:
-        precaution_file = csv.reader(file)
-        next(precaution_file)
-        for line in precaution_file:
-            for i in range(1, len(line)):
-                name_to_disease_map[line[0].strip()].advice.append(line[i].strip())
-    symptoms_list = [item for item in severity_map]
-    diagnosis_graph = Graph()
-
-    for disease in name_to_disease_map:
-        if disease not in diagnosis_graph.get_list_of_vertices():
-            diagnosis_graph.add_vertex(disease, 'disease')
-
-        for symptom in name_to_disease_map[disease].symptoms:
-            if symptom not in diagnosis_graph.get_list_of_vertices():
-                diagnosis_graph.add_vertex(symptom, 'symptom')
-
-            diagnosis_graph.add_edge(disease, symptom, int(severity_map[symptom]))
-    
-    return diagnosis_graph, symptoms_list, name_to_disease_map
-
-
-def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[str, float]:
-    """
-    Return the likelihood of each disease based on the provided symptoms by analyzing the shortest paths
-    between symptom nodes in a diagnosis graph.
-    This function checks all pairs of symptoms, finds the shortest path between them, and adds up scores for
-    each disease along the path. It then calculates a percentage chance for each disease based on those scores.
-    """
-
-    scores = {}
-    if len(symptoms) == 1:
-        neighbours = diagnosis_graph.get_neighbours(symptoms[0])
-        for neighbour in neighbours:
-            if neighbour not in scores:
-                scores[neighbour] = diagnosis_graph.get_weight_of_edge(neighbour, symptoms[0])
-            else:
-                scores[neighbour] += diagnosis_graph.get_weight_of_edge(neighbour, symptoms[0])
+def update_list(event):
+    """Filter dropdown options while keeping focus."""
+    typed = entry.get().lower()
+    listbox.delete(0, tk.END)
+    filtered = [item for item in symptom_options if typed in item.lower()]
+    if filtered:
+        for item in filtered:
+            listbox.insert(tk.END, item)
+        dropdown_frame.place(x=entry.winfo_x(), y=entry.winfo_y() + entry.winfo_height(),
+        width=entry.winfo_width())
     else:
-        for symptom_1, symptom_2 in combinations(symptoms, 2):
-            path = diagnosis_graph.shortest_path(symptom_1, symptom_2)
-            for vertex in path:
-                if diagnosis_graph.get_vertex_kind(vertex) == "disease":
-                    if vertex not in scores:
-                        scores[vertex] = diagnosis_graph.calculate_path_score(path)
-                    else:
-                        scores[vertex] += diagnosis_graph.calculate_path_score(path)
+        dropdown_frame.place_forget()
+
+def select_option(event):
+    """Show the selected option in selected symptoms list box and close the dropdown."""
+    selected = listbox.get(listbox.curselection())
+    entry.delete(0, tk.END)
+    lst_box.insert(tk.END, selected)
+    dropdown_frame.place_forget()
+
+def show_dropdown(event):
+    """Show dropdown list when entry user types in entry"""
+    update_list(event)
+
+def hide_dropdown(event):
+    """Hide dropdown when clicking outside of the dropdown and entry."""
+    if event.widget != entry and event.widget != listbox:
+        dropdown_frame.place_forget()
+
+def clear_lst_box():
+    """Clear the list box of selected symptoms."""
+    lst_box.delete(0, tk.END)
+
+def check_diagnosis():
+    """Calculate the potential diseases and show error if no symptom was selected."""
+    patient_symptoms = lst_box.get(0, tk.END)
+    if patient_symptoms:
+        result = backend.calculate_potential_disease(backend.diagnosis_graph, patient_symptoms)
+        create_diagnosis_window(result)
+        clear_lst_box()
+    else:
+        label_error.config(text="Please select symptoms!!", foreground="red")
+        root.after(1000, lambda : label_error.config(text=""))
+
+def create_diagnosis_window(data:dict):
+    """Create diagnosis window after the user pressed the the relative button"""
+
+    pop_up = tk.Toplevel(root)
+    pop_up.title("Diagnosis")
+    pop_up.geometry("600x500")
+
+    pop_up.attributes('-fullscreen', True)
 
 
-    scores = {disease: 1 / scores[disease] for disease in scores}
-    sum_scores = sum([scores[disease] for disease in scores])
-    scores = {disease: (scores[disease] / sum_scores) * 100 for disease in scores}
+    pop_up.bind("<Escape>", lambda event: toggle_fullscreen(pop_up))
 
-    return scores
+    create_disease_chart(data, pop_up)
 
-diagnosis_graph, symptoms_list, name_to_disease_map = load_diagnosis_graph('Symptom-severity.csv', 'dataset.csv', 'symptom_Description.csv', 'symptom_precaution.csv')
+    frame_below=ttk.Frame(pop_up)
+    frame_below.grid(row=1, column=0, sticky="nsew", padx=15, pady=15)
+
+    button_frame_pop = ttk.Frame(frame_below)
+    button_frame_pop.pack(fill=tk.X, pady=5)
+
+    ttk.Label(frame_below, text="Disease's description").pack(anchor="w", pady= 5)
+    lst_box_info = tk.Text(frame_below, wrap=tk.WORD, height=10, width=50, bg="#C7D9DD", fg="black", padx=10, pady=10, font=("Lexend",10))
+    lst_box_info.pack(fill=tk.BOTH, expand=True)
+
+
+    for i, disease in enumerate(data):
+        button_info = ttk.Button(button_frame_pop, text=f"{disease}", command=lambda disease=disease: show_info(disease, lst_box_info))
+        button_info.grid(row=0, column=i, sticky="ew", padx=5)
+
+    style_diagnosis = ttk.Style(pop_up)
+    style_diagnosis.theme_use('clam')
+    style_diagnosis.configure('TFrame', background='#ADB2D4')
+    style_diagnosis.configure('TLabel', background='#ADB2D4', foreground='black', font=('Lexend', 10))
+    style_diagnosis.configure('TButton', background='#2b2b2b', foreground='white')
+    style_diagnosis.map('TButton', background=[('active', '#FFF2F2')], foreground=[('active', '#2b2b2b')])
+
+    pop_up.columnconfigure(0, weight=1)
+    pop_up.rowconfigure(1, weight=1)
+    pop_up.rowconfigure(0, weight=1)
+    pop_up.config(bg="#ADB2D4")
+
+def show_info(selected, box):
+    """show info related to the selected disease"""
+
+    box.delete(1.0, tk.END)
+    box.insert(tk.END, disease_dict[selected].description + "\n")
+    box.insert(tk.END,"--------------------------------------------------------------------\n")
+    box.insert(tk.END,"Advice:\n")
+    for item in disease_dict[selected].advice:
+        box.insert(tk.END, f"• {item}\n")
+
+
+def create_disease_chart(data:dict, window):
+    """Create a chart based on the probabilities of the possible diseases"""
+    frame_chart= ttk.Frame(window)
+    frame_chart.grid(row=0, column=0, sticky="nsew", padx=20, pady=15)
+    fig = Figure(figsize=(4, 4), dpi=80, facecolor="#C7D9DD")
+    ax = fig.add_subplot(111)
+    categories=[]
+    values=[]
+    for disease in data:
+        categories.append(disease)
+        values.append(data[disease])
+
+    ax.bar(categories, values, color=['blue', 'green', 'red', 'purple'])
+    ax.set_title("Disease probabilities")
+    ax.set_xlabel("disease's name")
+    ax.set_ylabel("percentage")
+
+    ax.set_ylim(0, 100)
+
+    canvas = FigureCanvasTkAgg(fig, master= frame_chart)
+    canvas.draw()
+    canvas.get_tk_widget().pack(expand=True, fill="both", padx=10, pady=10)
+
+def toggle_fullscreen(window, event=None):
+    is_fullscreen = window.attributes('-fullscreen')
+    window.attributes('-fullscreen', not is_fullscreen)
+
+#------------------------------------------------
+
+# Main window setup
+root = tk.Tk()
+root.title("Doctor House")
+root.geometry("500x400")
+
+root.attributes('-fullscreen', True)
+
+# style
+
+root.bind("<Escape>", lambda event: toggle_fullscreen(root))
+
+style = ttk.Style(root)
+style.theme_use('clam')
+style.configure('TFrame', background='#ADB2D4')
+style.configure('TLabel', background='#ADB2D4', foreground='black', font=('Lexend', 12))
+style.configure('TButton', background='#2b2b2b', foreground='white')
+style.map('TButton', background=[('active', '#FFF2F2')], foreground=[('active', '#2b2b2b')])
+
+root.columnconfigure(0, weight=1)
+root.columnconfigure(1, weight=1)
+root.rowconfigure(0, weight=1)
+root.config(bg="#ADB2D4")
+
+
+# Left panel
+
+left_frame = ttk.Frame(root, padding=15)
+left_frame.grid(row=0, column=0, sticky="nsew")
+
+# Right panel
+
+right_frame = ttk.Frame(root, padding=10)
+right_frame.grid(row=0, column=1, sticky="nsew")
+
+ttk.Label(left_frame, text="Search Symptoms:").pack(anchor="w")
+entry = ttk.Entry(left_frame)
+entry.pack(fill=tk.X, pady=5)
+entry.bind("<KeyRelease>", update_list)
+entry.bind("<FocusIn>", show_dropdown)
+
+dropdown_frame = ttk.Frame(root, relief=tk.SUNKEN, borderwidth=1)
+listbox = tk.Listbox(dropdown_frame, height=6,  bg="#2b2b2b", fg="white", selectbackground="#FFF2F2", selectforeground="#2b2b2b")
+listbox.pack(fill=tk.BOTH, expand=True)
+listbox.bind("<ButtonRelease-1>", select_option)
+
+# Selected symptoms list box
+
+ttk.Label(right_frame, text="Selected Symptoms:").pack(anchor="w", pady= 5)
+lst_box = tk.Listbox(right_frame, bg="#ADB2D4", font=('Lexend', 10))
+lst_box.pack(fill=tk.BOTH, expand=True)
+
+# Buttons
+
+button_frame = ttk.Frame(right_frame)
+button_frame.pack(fill=tk.X, pady=10)
+
+btn_clear = ttk.Button(button_frame, text="Clear", command=clear_lst_box)
+btn_clear.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+btn_submit = ttk.Button(button_frame, text="Check Diagnosis", command=check_diagnosis)
+btn_submit.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+label_error = ttk.Label(right_frame, text="")
+label_error.pack(pady=5)
+
+root.bind('<Button-1>', hide_dropdown)
+symptom_options = sorted(backend.symptoms_list.copy())
+disease_dict = backend.name_to_disease_map
+
+root.mainloop()

@@ -117,7 +117,7 @@ class DoctorHouseApp:
         """Calculate the potential diseases and show error if no symptom was selected."""
         patient_symptoms = self.widgets["lst_box"].get(0, tk.END)
         if patient_symptoms:
-            result = backend.calculate_potential_disease(backend.diagnosis_graph, patient_symptoms)
+            result = backend.calculate_potential_disease(DIAGNOSIS_GRAPH, patient_symptoms)
             DiagnosisWindow(self.root, result)
             self.clear_lst_box()
         else:
@@ -209,8 +209,13 @@ class DiagnosisWindow:
             self.elements["lst_box_info"].insert(tk.END, f"• {item}\n")
 
 
-SYMPTOM_OPTIONS = sorted(backend.symptoms_list.copy())
-DISEASE_DICT = backend.name_to_disease_map
+DIAGNOSIS_GRAPH, SYMPTOMS_LIST, NAME_TO_DISEASE_MAP = backend.load_diagnosis_graph(
+    'Symptom-severity.csv',
+    'dataset.csv',
+    'symptom_Description.csv',
+    'symptom_precaution.csv')
+SYMPTOM_OPTIONS = sorted(SYMPTOMS_LIST.copy())
+DISEASE_DICT = NAME_TO_DISEASE_MAP
 
 if __name__ == '__main__':
     import python_ta

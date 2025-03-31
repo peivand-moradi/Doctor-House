@@ -1,1 +1,10 @@
+# Doctor House Project: Pyhton libraries required
 
+# Data visualization
+matplotlib
+
+# GUI interface
+tk
+
+# Graph-based computations
+networkx

@@ -84,10 +84,10 @@ class DoctorHouseApp:
         if filtered:
             for item in filtered:
                 self.widgets["listbox"].insert(tk.END, item)
-            self.widgets["dropdown frame"].place(x=self.widgets["entry"].winfo_x(), y=self.widgets["entry"].winfo_y() +
-                                                                                      self.widgets[
-                                                                                          "entry"].winfo_height(),
-                                                 width=self.widgets["entry"].winfo_width())
+            x_size = self.widgets["entry"].winfo_x()
+            y_size = self.widgets["entry"].winfo_y() + self.widgets["entry"].winfo_height()
+            width = self.widgets["entry"].winfo_width()
+            self.widgets["dropdown frame"].place(x=x_size, y=y_size, width=width)
         else:
             self.widgets["dropdown frame"].place_forget()
 

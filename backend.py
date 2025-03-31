@@ -292,7 +292,7 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
     else:
         for symptom_1, symptom_2 in generate_combinations(symptoms):
             path = diagnosis_graph.shortest_path(symptom_1, symptom_2)
-            scores.update(calculate_score_path(path))
+            scores.update(calculate_score_path(path, diagnosis_graph))
 
     scores = {disease: 1 / score for disease, score in scores.items() if score != 0}
     sum_scores = sum(scores.values())
@@ -301,20 +301,13 @@ def calculate_potential_disease(diagnosis_graph: Graph, symptoms: list) -> dict[
     return scores
 
 
-def calculate_score_path(path: list) -> dict[str:float]:
+def calculate_score_path(path: list, diagnosis_graph: Graph) -> dict[str:float]:
     """ Helper function for calculate_potential_disease, calculates the score of a given path"""
     scores = {}
     for vertex in path:
         if diagnosis_graph.get_vertex_kind(vertex) == "disease":
             scores[vertex] = scores.get(vertex, 0) + diagnosis_graph.calculate_path_score(path)
     return scores
-
-
-diagnosis_graph, symptoms_list, name_to_disease_map = load_diagnosis_graph(
-    'Symptom-severity.csv',
-    'dataset.csv',
-    'symptom_Description.csv',
-    'symptom_precaution.csv')
 
 
 if __name__ == '__main__':

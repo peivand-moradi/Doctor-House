@@ -148,7 +148,7 @@ class DiagnosisWindow:
 
         self.pop_up.attributes('-fullscreen', True)
 
-        self.pop_up.bind("<Escape>", self.toggle_fullscreen())
+        self.pop_up.bind("<Escape>", self.toggle_fullscreen)
 
         self.create_disease_chart(data)
 

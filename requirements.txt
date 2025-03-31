@@ -1,5 +1,8 @@
 # Doctor House Project: Pyhton libraries required
 
+# Testing and code checking
+pyhton-ta
+
 # Data visualization
 matplotlib
 
